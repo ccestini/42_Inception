@@ -1,0 +1,83 @@
+version: '3'
+
+services:
+  nginx:
+    image: nginx
+    container_name: nginx
+    build: 
+      context: ./requirements/nginx/
+      args:
+      - CERT_PATH=${CERT_PATH}
+      - KEY_PATH=${KEY_PATH}
+    depends_on:
+      - wordpress
+    ports:
+      - "443:443"   
+    volumes:
+      - volume_wp:/var/www/html 
+    env_file:
+      - ./.env   
+    networks:
+      - 42network
+    restart: always 
+  mariadb:
+    image: mariadb
+    container_name: mariadb
+    build:
+      context: ./requirements/mariadb/
+      args:
+        - DB_NAME=${DB_NAME}
+        - DB_ROOT=${DB_ROOT}
+        - DB_USER=${DB_USER}
+        - DB_USER_PASS=${DB_USER_PASS}
+    expose:
+      - '3306'
+    volumes:
+      - volume_db:/var/lib/mysql 
+    env_file:
+      - ./.env
+    networks:
+      - 42network
+    restart: always
+  wordpress:
+    image: wordpress
+    container_name: wordpress
+    build:
+      context: ./requirements/wordpress/
+      args:
+        - WP_ADMIN_USER=${WP_ADMIN_USER}
+        - WP_ADMIN_PWD=${WP_ADMIN_PWD}
+        - WP_ADMIN_EMAIL=${WP_ADMIN_EMAIL}
+        - WP_USER=${WP_USER}
+        - WP_PWD=${WP_PWD}
+        - WP_EMAIL=${WP_EMAIL}
+    depends_on:
+      - mariadb
+    expose:
+      - '9000'
+    volumes:
+      - volume_wp:/var/www/html
+    env_file:
+      - ./.env
+    networks:
+      - 42network
+    restart: on-failure  # always is normally for services that cannot stop as nginx and mariadb, for php lemp stack uses on-failure
+
+networks:
+  42network:
+    driver: bridge
+
+volumes:
+  volume_wp:
+    driver: local  
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/${USER}/data/wordpress
+  volume_db:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/${USER}/data/mariadb
+  
